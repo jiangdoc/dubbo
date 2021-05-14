@@ -17,7 +17,14 @@
 package com.alibaba.dubbo.demo.consumer;
 
 import com.alibaba.dubbo.demo.DemoService;
+import com.alibaba.dubbo.demo.User;
+import com.alibaba.dubbo.demo.UserService;
+import com.alibaba.fastjson.JSON;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.http.converter.json.GsonBuilderUtils;
+
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Consumer {
 
@@ -27,13 +34,17 @@ public class Consumer {
         System.setProperty("java.net.preferIPv4Stack", "true");
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"META-INF/spring/dubbo-demo-consumer.xml"});
         context.start();
+
         DemoService demoService = (DemoService) context.getBean("demoService"); // get remote service proxy
+        UserService userService = (UserService) context.getBean("userService"); // get remote service proxy
 
         while (true) {
             try {
                 Thread.sleep(1000);
                 String hello = demoService.sayHello("world"); // call remote method
                 System.out.println(hello); // get result
+                final List<User> users = userService.slectUser();
+                System.out.println(JSON.toJSONString(users));
 
             } catch (Throwable throwable) {
                 throwable.printStackTrace();

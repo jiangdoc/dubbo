@@ -74,12 +74,17 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         return SPRING_CONTEXT;
     }
 
+    /**
+     * 在执行ApplicationContextAware的时候，会执行此方法
+     * @param applicationContext
+     */
     public void setApplicationContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
         SpringExtensionFactory.addApplicationContext(applicationContext);
         if (applicationContext != null) {
             SPRING_CONTEXT = applicationContext;
             try {
+                // 显示调用此方法，将自己添加到事件监听集合中
                 Method method = applicationContext.getClass().getMethod("addApplicationListener", new Class<?>[]{ApplicationListener.class}); // backward compatibility to spring 2.0.1
                 method.invoke(applicationContext, new Object[]{this});
                 supportedApplicationListener = true;
@@ -112,24 +117,42 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         return service;
     }
 
+    /**
+     * Dubbo 服务导出过程始于 Spring 容器发布刷新事件
+     * Dubbo 在接收到事件后，会立即执行服务导出逻辑。
+     * 整个逻辑大致可分为三个部分，
+     *          第一部分是前置工作，主要用于检查参数，组装 URL。
+     *          第二部分是导出服务，包含导出服务到本地 (JVM)，和导出服务到远程两个过程。
+     *          第三部分是向注册中心注册服务，用于服务发现。
+     * @param event
+     */
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        // 是否有延迟导出 && 是否已导出 && 是不是已被取消导出
         if (isDelay() && !isExported() && !isUnexported()) {
             if (logger.isInfoEnabled()) {
                 logger.info("The service ready on spring started. service: " + getInterface());
             }
+            // 导出服务
             export();
         }
     }
 
     private boolean isDelay() {
+        // 获取 delay
         Integer delay = getDelay();
         ProviderConfig provider = getProvider();
         if (delay == null && provider != null) {
+            // 如果前面获取的 delay 为空，这里继续获取
             delay = provider.getDelay();
         }
+        // 判断 delay 是否为空，或者等于 -1
         return supportedApplicationListener && (delay == null || delay == -1);
     }
 
+    /**
+     * ServiceBean初始化的时候会执行此方法
+     * @throws Exception
+     */
     @SuppressWarnings({"unchecked", "deprecation"})
     public void afterPropertiesSet() throws Exception {
         if (getProvider() == null) {
@@ -257,6 +280,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
             }
         }
         if (!isDelay()) {
+            // 重要这里会暴露服务
             export();
         }
     }

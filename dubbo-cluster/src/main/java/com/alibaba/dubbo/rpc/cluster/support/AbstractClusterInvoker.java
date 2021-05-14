@@ -221,7 +221,9 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
         LoadBalance loadbalance;
 
+        // 1.获取服务提供者集合
         List<Invoker<T>> invokers = list(invocation);
+        // 2.通过负载均衡策略LoadBalance来选择一个Invoker,默认是随机
         if (invokers != null && invokers.size() > 0) {
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(invocation.getMethodName(), Constants.LOADBALANCE_KEY, Constants.DEFAULT_LOADBALANCE));
@@ -229,6 +231,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(Constants.DEFAULT_LOADBALANCE);
         }
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
+        // 3.具体实现是由子类实现的
         return doInvoke(invocation, invokers, loadbalance);
     }
 

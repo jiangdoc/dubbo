@@ -94,8 +94,10 @@ public abstract class Wrapper {
         if (c == Object.class)
             return OBJECT_WRAPPER;
 
+        // 从缓存中获取 Wrapper 实例
         Wrapper ret = WRAPPER_MAP.get(c);
         if (ret == null) {
+            // 缓存未命中，创建 Wrapper
             ret = makeWrapper(c);
             WRAPPER_MAP.put(c, ret);
         }
@@ -103,36 +105,60 @@ public abstract class Wrapper {
     }
 
     private static Wrapper makeWrapper(Class<?> c) {
+        // 检测 c 是否为基本类型，若是则抛出异常
         if (c.isPrimitive())
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
 
         String name = c.getName();
         ClassLoader cl = ClassHelper.getClassLoader(c);
 
+        // c1 用于存储 setPropertyValue 方法代码
         StringBuilder c1 = new StringBuilder("public void setPropertyValue(Object o, String n, Object v){ ");
+        // c2 用于存储 getPropertyValue 方法代码
         StringBuilder c2 = new StringBuilder("public Object getPropertyValue(Object o, String n){ ");
+        // c2 用于存储 getPropertyValue 方法代码
         StringBuilder c3 = new StringBuilder("public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws " + InvocationTargetException.class.getName() + "{ ");
 
+        // 生成类型转换代码及异常捕捉代码，比如：
+        //   DemoService w; try { w = ((DemoServcie) $1); }}catch(Throwable e){ throw new IllegalArgumentException(e); }
         c1.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
         c2.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
         c3.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
 
-        Map<String, Class<?>> pts = new HashMap<String, Class<?>>(); // <property name, property types>
-        Map<String, Method> ms = new LinkedHashMap<String, Method>(); // <method desc, Method instance>
-        List<String> mns = new ArrayList<String>(); // method names.
-        List<String> dmns = new ArrayList<String>(); // declaring method names.
+        // pts 用于存储成员变量名和类型
+        Map<String, Class<?>> pts = new HashMap<String, Class<?>>();
+        // ms 用于存储方法描述信息（可理解为方法签名）及 Method 实例
+        Map<String, Method> ms = new LinkedHashMap<String, Method>();
+        // mns 为方法名列表
+        List<String> mns = new ArrayList<String>();
+        // dmns 用于存储“定义在当前类中的方法”的名称
+        List<String> dmns = new ArrayList<String>();
 
-        // get all public field.
+        // --------------------------------✨ 分割线1 ✨-------------------------------------
+
+        // 获取 public 访问级别的字段，并为所有字段生成条件判断语句
         for (Field f : c.getFields()) {
             String fn = f.getName();
             Class<?> ft = f.getType();
             if (Modifier.isStatic(f.getModifiers()) || Modifier.isTransient(f.getModifiers()))
+                // 忽略关键字 static 或 transient 修饰的变量
                 continue;
 
+            // 生成条件判断及赋值语句，比如：
+            // if( $2.equals("name") ) { w.name = (java.lang.String) $3; return;}
+            // if( $2.equals("age") ) { w.age = ((Number) $3).intValue(); return;}
             c1.append(" if( $2.equals(\"").append(fn).append("\") ){ w.").append(fn).append("=").append(arg(ft, "$3")).append("; return; }");
+
+            // 生成条件判断及返回语句，比如：
+            // if( $2.equals("name") ) { return ($w)w.name; }
             c2.append(" if( $2.equals(\"").append(fn).append("\") ){ return ($w)w.").append(fn).append("; }");
+
+            // 存储 <字段名, 字段类型> 键值对到 pts 中
             pts.put(fn, ft);
         }
+
+        // --------------------------------✨ 分割线2 ✨-------------------------------------
+
 
         Method[] methods = c.getMethods();
         // get all public method.
