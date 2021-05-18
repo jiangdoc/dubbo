@@ -51,6 +51,7 @@ public class ChannelEventRunnable implements Runnable {
     }
 
     public void run() {
+        // 检测通道状态，对于请求或响应消息
         switch (state) {
             case CONNECTED:
                 try {
@@ -76,6 +77,8 @@ public class ChannelEventRunnable implements Runnable {
                 break;
             case RECEIVED:
                 try {
+                    // 将 channel 和 message 传给 ChannelHandler 对象，进行后续的调用
+                    //DecodeHandler
                     handler.received(channel, message);
                 } catch (Exception e) {
                     logger.warn("ChannelEventRunnable handle " + state + " operation error, channel is " + channel

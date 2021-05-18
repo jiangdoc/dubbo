@@ -353,6 +353,7 @@ public class RedisRegistry extends FailbackRegistry {
                         admin = true;
                         Set<String> keys = jedis.keys(service);
                         if (keys != null && keys.size() > 0) {
+                            // 服务集合
                             Map<String, Set<String>> serviceKeys = new HashMap<String, Set<String>>();
                             for (String key : keys) {
                                 String serviceKey = toServicePath(key);
@@ -364,6 +365,7 @@ public class RedisRegistry extends FailbackRegistry {
                                 sk.add(key);
                             }
                             for (Set<String> sk : serviceKeys.values()) {
+                                // 通知
                                 doNotify(jedis, sk, url, Arrays.asList(listener));
                             }
                         }
@@ -419,6 +421,7 @@ public class RedisRegistry extends FailbackRegistry {
                 continue;
             }
             List<URL> urls = new ArrayList<URL>();
+            // 获取key的hash结构数据
             Map<String, String> values = jedis.hgetAll(key);
             if (values != null && values.size() > 0) {
                 for (Map.Entry<String, String> entry : values.entrySet()) {
@@ -445,6 +448,7 @@ public class RedisRegistry extends FailbackRegistry {
         if (result == null || result.size() == 0) {
             return;
         }
+        // 通知监听
         for (NotifyListener listener : listeners) {
             notify(url, listener, result);
         }

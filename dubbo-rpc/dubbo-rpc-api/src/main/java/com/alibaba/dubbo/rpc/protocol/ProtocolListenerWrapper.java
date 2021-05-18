@@ -32,10 +32,15 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 
 /**
+ * Protocol 的AOP切面逻辑
  * ListenerProtocol
  */
 public class ProtocolListenerWrapper implements Protocol {
 
+    /**
+     * loadFile的时候通过构造方法注入
+     * @see com.alibaba.dubbo.common.extension.ExtensionLoader#loadFile(java.util.Map, java.lang.String)
+     */
     private final Protocol protocol;
 
     public ProtocolListenerWrapper(Protocol protocol) {

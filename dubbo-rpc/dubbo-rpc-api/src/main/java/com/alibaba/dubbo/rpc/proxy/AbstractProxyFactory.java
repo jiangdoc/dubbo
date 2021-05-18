@@ -30,11 +30,14 @@ public abstract class AbstractProxyFactory implements ProxyFactory {
 
     public <T> T getProxy(Invoker<T> invoker) throws RpcException {
         Class<?>[] interfaces = null;
+        // 获取接口列表
         String config = invoker.getUrl().getParameter("interfaces");
         if (config != null && config.length() > 0) {
+            // 切分接口列表
             String[] types = Constants.COMMA_SPLIT_PATTERN.split(config);
             if (types != null && types.length > 0) {
                 interfaces = new Class<?>[types.length + 2];
+                // 设置服务接口类和 EchoService.class 到 interfaces 中
                 interfaces[0] = invoker.getInterface();
                 interfaces[1] = EchoService.class;
                 for (int i = 0; i < types.length; i++) {

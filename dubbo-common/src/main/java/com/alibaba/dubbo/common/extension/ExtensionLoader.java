@@ -679,6 +679,7 @@ public class ExtensionLoader<T> {
                                             } else {
                                                 try {
                                                     // 检测 clazz 是否是 Wrapper 类型
+                                                    // Aop功能
                                                     clazz.getConstructor(type);
                                                     Set<Class<?>> wrappers = cachedWrapperClasses;
                                                     if (wrappers == null) {
@@ -778,6 +779,10 @@ public class ExtensionLoader<T> {
             return cachedAdaptiveClass;
         }
         // 如果没有手动实现接口的代理类，那么Dubbo就会自动给你实现一个
+        /**
+         * 生成后的对象，是一个代理对象，可以根据URL中的字段，选则执行哪个一个子类
+         * 生成逻辑是操作字节码
+         */
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 

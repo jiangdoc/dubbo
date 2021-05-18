@@ -67,6 +67,11 @@ public interface Protocol {
      * @return invoker service's local proxy
      * @throws RpcException when there's any error while connecting to the service provider
      */
+    /**
+     * 功能：获取注册中心，注册消费者数据到注册中心，获取并处理订阅数据（也就是从注册中心获取服务提供者信息），生成Invoker对象
+     * refprotocol：这里执行哪个Protocol的子类，由URL对象中的protocol字段值决定：protocol = "registry"
+     * invoker：这里的invoker是AbstractClusterInvoker<T>的子类，根据容错机制确定是哪个子类，默认是FailoverClusterInvoker
+     */
     @Adaptive
     <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException;
 

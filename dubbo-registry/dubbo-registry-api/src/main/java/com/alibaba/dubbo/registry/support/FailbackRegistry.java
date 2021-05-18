@@ -443,6 +443,10 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     // ==== Template method ====
 
+    /**
+     * 服务注册模板方法
+     * @param url
+     */
     protected abstract void doRegister(URL url);
 
     protected abstract void doUnregister(URL url);

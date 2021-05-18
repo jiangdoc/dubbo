@@ -43,7 +43,7 @@ import java.util.Map;
 
 /**
  * ServiceFactoryBean
- *
+ * 服务提供者
  * @export
  */
 public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean, ApplicationContextAware, ApplicationListener<ContextRefreshedEvent>, BeanNameAware {

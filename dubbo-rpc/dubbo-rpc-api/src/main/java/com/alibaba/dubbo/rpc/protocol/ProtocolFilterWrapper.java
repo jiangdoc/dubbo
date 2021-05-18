@@ -34,6 +34,10 @@ import java.util.List;
  */
 public class ProtocolFilterWrapper implements Protocol {
 
+    /**
+     * loadFile的时候通过构造方法注入
+     * @see com.alibaba.dubbo.common.extension.ExtensionLoader#loadFile(java.util.Map, java.lang.String)
+     */
     private final Protocol protocol;
 
     public ProtocolFilterWrapper(Protocol protocol) {

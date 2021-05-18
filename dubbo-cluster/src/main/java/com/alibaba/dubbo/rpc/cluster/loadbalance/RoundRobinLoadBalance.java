@@ -29,7 +29,8 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * Round robin load balance.
- *
+ *  经过加权，每台服务器能够得到的请求数比例，接近或等于他们的权重比。
+ *  比如服务器 A、B、C 权重比为 5:2:1。那么在8次请求中，服务器 A 将收到其中的5次请求，服务器 B 会收到其中的2次请求，服务器 C 则收到其中的1次请求。
  */
 public class RoundRobinLoadBalance extends AbstractLoadBalance {
 

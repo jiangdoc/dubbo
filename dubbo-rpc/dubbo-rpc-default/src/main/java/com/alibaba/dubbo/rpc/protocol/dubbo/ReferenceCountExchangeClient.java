@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * 封装引用计数
  * dubbo protocol support class.
  */
 @SuppressWarnings("deprecation")
@@ -58,6 +59,7 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
     }
 
     public ResponseFuture request(Object request) throws RemotingException {
+        // 直接调用被装饰对象的同签名方法
         return client.request(request);
     }
 
@@ -74,6 +76,7 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
     }
 
     public ResponseFuture request(Object request, int timeout) throws RemotingException {
+        // 直接调用被装饰对象的同签名方法
         return client.request(request, timeout);
     }
 
@@ -166,7 +169,7 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
     public boolean isClosed() {
         return client.isClosed();
     }
-
+    /** 引用计数自增，该方法由外部调用 */
     public void incrementAndGetCount() {
         refenceCount.incrementAndGet();
     }

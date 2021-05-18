@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 
 /**
  * InvokerHandler
+ * InvokerInvocationHandler 实现 JDK 的 InvocationHandler 接口，具体的用途是拦截接口类调用。
  */
 public class InvokerInvocationHandler implements InvocationHandler {
 
@@ -51,7 +52,7 @@ public class InvokerInvocationHandler implements InvocationHandler {
         }
         /**
          * 1.根据方法名和参数构建RpcInvocation对象
-         * 2.执行invoker的invoke()
+         * 2.执行invoker（MockClusterInvoker）的invoke()
          */
         return invoker.invoke(new RpcInvocation(method, args)).recreate();
     }

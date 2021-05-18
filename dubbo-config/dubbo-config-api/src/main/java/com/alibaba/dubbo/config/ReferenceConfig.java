@@ -29,10 +29,7 @@ import com.alibaba.dubbo.config.annotation.Reference;
 import com.alibaba.dubbo.config.model.ApplicationModel;
 import com.alibaba.dubbo.config.model.ConsumerModel;
 import com.alibaba.dubbo.config.support.Parameter;
-import com.alibaba.dubbo.rpc.Invoker;
-import com.alibaba.dubbo.rpc.Protocol;
-import com.alibaba.dubbo.rpc.ProxyFactory;
-import com.alibaba.dubbo.rpc.StaticContext;
+import com.alibaba.dubbo.rpc.*;
 import com.alibaba.dubbo.rpc.cluster.Cluster;
 import com.alibaba.dubbo.rpc.cluster.directory.StaticDirectory;
 import com.alibaba.dubbo.rpc.cluster.support.AvailableCluster;
@@ -64,11 +61,19 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
 
     private static final long serialVersionUID = -5864351140409987595L;
 
+    /**
+     * refprotocol是一个AdaptiveExtendion的代理对象，可以根据URL中的protocol字段去选则使用哪个子类
+     * 生成代理逻辑：
+     *         @see com.alibaba.dubbo.common.extension.ExtensionLoader#getAdaptiveExtensionClass()
+     * 生成的代理类：例
+     *          @see Protocol$Adaptive2
+     */
     private static final Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
     private static final Cluster cluster = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
 
     private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
+
     private final List<URL> urls = new ArrayList<URL>();
     // interface name
     private String interfaceName;
@@ -83,7 +88,13 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     private ConsumerConfig consumer;
     private String protocol;
     // interface proxy reference
+    /**
+     * 接口代理引用
+     */
     private transient volatile T ref;
+    /**
+     * invoker是AbstractClusterInvoker<T>的子类，根据容错机制确定是哪个子类，默认是FailoverClusterInvoker
+     */
     private transient volatile Invoker<?> invoker;
     private transient volatile boolean initialized;
     private transient volatile boolean destroyed;
@@ -159,7 +170,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         if (destroyed) {
             throw new IllegalStateException("Already destroyed!");
         }
+        // ref== null，则调用init去生成ref
         if (ref == null) {
+            // init 方法主要用于处理配置，以及调用 createProxy 生成代理类
             init();
         }
         return ref;
@@ -200,6 +213,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             interfaceClass = GenericService.class;
         } else {
             try {
+                // 加载类
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
@@ -207,13 +221,21 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
             checkInterfaceAndMethods(interfaceClass, methods);
         }
+
+        //从系统属性或配置文件中加载与接口名相对应的配置，并将解析结果赋值给 url 字段。url 字段的作用一般是用于点对点调用。
+        // -------------------------------✨ 分割线1 ✨------------------------------
+
+        // 从系统变量中获取与接口名对应的属性值
         String resolve = System.getProperty(interfaceName);
         String resolveFile = null;
         if (resolve == null || resolve.length() == 0) {
+            // 从系统属性中获取解析文件路径
             resolveFile = System.getProperty("dubbo.resolve.file");
             if (resolveFile == null || resolveFile.length() == 0) {
+                // 从指定位置加载配置文件
                 File userResolveFile = new File(new File(System.getProperty("user.home")), "dubbo-resolve.properties");
                 if (userResolveFile.exists()) {
+                    // 获取文件绝对路径
                     resolveFile = userResolveFile.getAbsolutePath();
                 }
             }
@@ -222,6 +244,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 FileInputStream fis = null;
                 try {
                     fis = new FileInputStream(new File(resolveFile));
+                    // 从文件中加载配置
                     properties.load(fis);
                 } catch (IOException e) {
                     throw new IllegalStateException("Unload " + resolveFile + ", cause: " + e.getMessage(), e);
@@ -232,6 +255,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                         logger.warn(e.getMessage(), e);
                     }
                 }
+                // 获取与接口名对应的配置
                 resolve = properties.getProperty(interfaceName);
             }
         }
@@ -245,6 +269,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             }
         }
+
+        //检测几个核心配置类是否为空，为空则尝试从其他配置类中获取。
+        // -------------------------------✨ 分割线2 ✨------------------------------
         if (consumer != null) {
             if (application == null) {
                 application = consumer.getApplication();
@@ -275,10 +302,18 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = application.getMonitor();
             }
         }
+        // 检测 Application 合法性
         checkApplication();
+        // 检测本地存根配置合法性
         checkStubAndMock(interfaceClass);
+
+        //用于收集各种配置，并将配置存储到 map 中
+        // -------------------------------✨ 分割线3 ✨------------------------------
+
         Map<String, String> map = new HashMap<String, String>();
         Map<Object, Object> attributes = new HashMap<Object, Object>();
+
+        // 添加 side、协议版本信息、时间戳和进程号等信息到 map 中
         map.put(Constants.SIDE_KEY, Constants.CONSUMER_SIDE);
         map.put(Constants.DUBBO_VERSION_KEY, Version.getVersion());
         map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
@@ -291,6 +326,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 map.put("revision", revision);
             }
 
+            // 获取接口方法列表，并添加到 map 中
             String[] methods = Wrapper.getWrapper(interfaceClass).getMethodNames();
             if (methods.length == 0) {
                 logger.warn("NO method found in service interface " + interfaceClass.getName());
@@ -299,27 +335,41 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 map.put("methods", StringUtils.join(new HashSet<String>(Arrays.asList(methods)), ","));
             }
         }
+
+        // 将 ApplicationConfig、ConsumerConfig、ReferenceConfig 等对象的字段信息添加到 map 中
         map.put(Constants.INTERFACE_KEY, interfaceName);
         appendParameters(map, application);
         appendParameters(map, module);
         appendParameters(map, consumer, Constants.DEFAULT_KEY);
         appendParameters(map, this);
+
+        //处理 MethodConfig 实例。该实例包含了事件通知配置，比如 onreturn、onthrow、oninvoke 等
+        // -------------------------------✨ 分割线4 ✨------------------------------
         String prifix = StringUtils.getServiceKey(map);
         if (methods != null && methods.size() > 0) {
+            // 遍历 MethodConfig 列表
             for (MethodConfig method : methods) {
                 appendParameters(map, method, method.getName());
+                // 检测 map 是否包含 methodName.retry
                 String retryKey = method.getName() + ".retry";
                 if (map.containsKey(retryKey)) {
                     String retryValue = map.remove(retryKey);
                     if ("false".equals(retryValue)) {
+                        // 添加重试次数配置 methodName.retries
                         map.put(method.getName() + ".retries", "0");
                     }
                 }
+                // 添加 MethodConfig 中的“属性”字段到 attributes
+                // 比如 onreturn、onthrow、oninvoke 等
                 appendAttributes(attributes, method, prifix + "." + method.getName());
                 checkAndConvertImplicitConfig(method, map, attributes);
             }
         }
 
+        // 解析服务消费者 ip，以及调用 createProxy 创建代理对象
+        // -------------------------------✨ 分割线5 ✨------------------------------
+
+        // 获取服务消费者 ip 地址
         String hostToRegistry = ConfigUtils.getSystemProperty(Constants.DUBBO_IP_TO_REGISTRY);
         if (hostToRegistry == null || hostToRegistry.length() == 0) {
             hostToRegistry = NetUtils.getLocalHost();
@@ -329,9 +379,15 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         map.put(Constants.REGISTER_IP_KEY, hostToRegistry);
 
         //attributes are stored by system context.
+        // 存储 attributes 到系统上下文中
         StaticContext.getSystemContext().putAll(attributes);
-        // 创建接口的代理
+
+        // 创建代理类
+        // ref为接口代理引用
         ref = createProxy(map);
+
+        // 根据服务名，ReferenceConfig，代理类构建 ConsumerModel，
+        // 并将 ConsumerModel 存入到 ApplicationModel 中
         ConsumerModel consumerModel = new ConsumerModel(getUniqueServiceName(), this, ref, interfaceClass.getMethods());
         ApplicationModel.initConsumerModel(getUniqueServiceName(), consumerModel);
     }
@@ -341,8 +397,11 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         URL tmpUrl = new URL("temp", "localhost", 0, map);
         final boolean isJvmRefer;
         if (isInjvm() == null) {
-            if (url != null && url.length() > 0) { // if a url is specified, don't do local reference
+            // url 配置被指定，则不做本地引用
+            if (url != null && url.length() > 0) {
                 isJvmRefer = false;
+                // 根据 url 的协议、scope 以及 injvm 等参数检测是否需要本地引用
+                // 比如如果用户显式配置了 scope=local，此时 isInjvmRefer 返回 true
             } else if (InjvmProtocol.getInjvmProtocol().isInjvmRefer(tmpUrl)) {
                 // by default, reference local service if there is
                 isJvmRefer = true;
@@ -374,6 +433,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                         if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
                             urls.add(url.addParameterAndEncoded(Constants.REFER_KEY, StringUtils.toQueryString(map)));
                         } else {
+                            // 合并 url，移除服务提供者的一些配置（这些配置来源于用户配置的 url 属性），
+                            // 比如线程池相关配置。并保留服务提供者的部分配置，比如版本，group，时间戳等
+                            // 最后将合并后的配置设置为 url 查询字符串中。
                             urls.add(ClusterUtils.mergeUrl(url, map));
                         }
                     }
@@ -388,6 +450,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                             map.put(Constants.MONITOR_KEY, URL.encode(monitorUrl.toFullString()));
                         }
                         // 注册中心地址后面服务消费元数据信息
+                        // 添加 refer 参数到 url 中，并将 url 添加到 urls 中
                         urls.add(u.addParameterAndEncoded(Constants.REFER_KEY, StringUtils.toQueryString(map)));
                     }
                 }
@@ -401,6 +464,11 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
              */
             // 4.单注册中心
             if (urls.size() == 1) {
+                /**
+                 * 功能：获取注册中心，注册消费者数据到注册中心，获取并处理订阅数据（也就是从注册中心获取服务提供者信息）
+                 * refprotocol：这里执行哪个Protocol的子类，由URL对象中的protocol字段值决定：protocol = "registry"
+                 * invoker：这里的invoker是AbstractClusterInvoker<T>的子类，根据容错机制确定是哪个子类，默认是FailoverClusterInvoker
+                 */
                 invoker = refprotocol.refer(interfaceClass, urls.get(0));
             } else {
                 // 5. 多注册中心
@@ -416,6 +484,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 if (registryURL != null) { // registry url is available
                     // use AvailableCluster only when register's cluster is available
                     // 通过Cluster将多个注册中心转成一个invoker
+                    // 如果注册中心链接不为空，则将使用 AvailableCluster
                     URL u = registryURL.addParameter(Constants.CLUSTER_KEY, AvailableCluster.NAME);
                     invoker = cluster.join(new StaticDirectory(u, invokers));
                 } else { // not a registry url

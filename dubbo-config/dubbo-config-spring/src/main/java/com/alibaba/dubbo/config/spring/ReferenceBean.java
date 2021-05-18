@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * 服务消费者
  * ReferenceFactoryBean
  *
  * @export
@@ -61,6 +62,11 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
         SpringExtensionFactory.addApplicationContext(applicationContext);
     }
 
+    /**
+     * 当我们的服务被注入到其他类中时(也就是调用getBean()方法时)，Spring 会第一时间调用 getObject 方法创建Bean，并由该方法执行服务引用逻辑。
+     * @return
+     * @throws Exception
+     */
     public Object getObject() throws Exception {
         return get();
     }
@@ -74,6 +80,10 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
         return true;
     }
 
+    /**
+     * bean的初始化的会调用此方案
+     * @throws Exception
+     */
     @SuppressWarnings({"unchecked"})
     public void afterPropertiesSet() throws Exception {
         //加载ConsumerConfig

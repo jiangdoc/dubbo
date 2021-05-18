@@ -33,6 +33,10 @@ import static com.alibaba.dubbo.common.Constants.QOS_PORT;
 public class QosProtocolWrapper implements Protocol {
     private static AtomicBoolean hasStarted = new AtomicBoolean(false);
 
+    /**
+     * loadFile的时候通过构造方法注入
+     * @see com.alibaba.dubbo.common.extension.ExtensionLoader#loadFile(java.util.Map, java.lang.String)
+     */
     private Protocol protocol;
 
     public QosProtocolWrapper(Protocol protocol) {
