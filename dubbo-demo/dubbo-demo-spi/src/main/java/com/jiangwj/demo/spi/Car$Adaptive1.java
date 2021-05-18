@@ -2,7 +2,10 @@ package com.jiangwj.demo.spi;
 
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 
-public class Car$Adaptive implements com.jiangwj.demo.spi.Car {
+/**
+ * Car$Adaptive
+ */
+public class Car$Adaptive1 implements com.jiangwj.demo.spi.Car {
     public void sayColor(com.alibaba.dubbo.common.URL arg0) {
         if (arg0 == null) throw new IllegalArgumentException("url == null");
         com.alibaba.dubbo.common.URL url = arg0;

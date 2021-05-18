@@ -30,6 +30,7 @@ import java.util.List;
  */
 public class StaticDirectory<T> extends AbstractDirectory<T> {
 
+    // Invoker 列表
     private final List<Invoker<T>> invokers;
 
     public StaticDirectory(List<Invoker<T>> invokers) {
@@ -52,15 +53,21 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
     }
 
     public Class<T> getInterface() {
+        // 获取接口类
         return invokers.get(0).getInterface();
     }
 
+    /**
+     *  // 检测服务目录是否可用
+     * @return
+     */
     public boolean isAvailable() {
         if (isDestroyed()) {
             return false;
         }
         for (Invoker<T> invoker : invokers) {
             if (invoker.isAvailable()) {
+                // 只要有一个 Invoker 是可用的，就认为当前目录是可用的
                 return true;
             }
         }
@@ -71,7 +78,9 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
         if (isDestroyed()) {
             return;
         }
+        // 调用父类销毁逻辑
         super.destroy();
+        // 遍历 Invoker 列表，并执行相应的销毁逻辑
         for (Invoker<T> invoker : invokers) {
             invoker.destroy();
         }
@@ -80,7 +89,7 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
 
     @Override
     protected List<Invoker<T>> doList(Invocation invocation) throws RpcException {
-
+        //直接返回
         return invokers;
     }
 

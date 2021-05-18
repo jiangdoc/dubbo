@@ -116,6 +116,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
                 }
             }
         }
+        // 负载均衡策略，选取一个invoker
         Invoker<T> invoker = doselect(loadbalance, invocation, invokers, selected);
 
         if (sticky) {
@@ -133,6 +134,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         if (invokers.size() == 2 && selected != null && selected.size() > 0) {
             return selected.get(0) == invokers.get(0) ? invokers.get(1) : invokers.get(0);
         }
+        // 负载均衡策略，选取一个invoker
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
@@ -223,7 +225,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
         // 1.获取服务提供者集合
         List<Invoker<T>> invokers = list(invocation);
-        // 2.通过负载均衡策略LoadBalance来选择一个Invoker,默认是随机
+        // 2.选择一个负载均衡策略,默认是随机
         if (invokers != null && invokers.size() > 0) {
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(invocation.getMethodName(), Constants.LOADBALANCE_KEY, Constants.DEFAULT_LOADBALANCE));

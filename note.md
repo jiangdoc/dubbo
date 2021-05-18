@@ -14,7 +14,6 @@ DubboBeanDefinitionParser类parse的主要逻辑就是把对应的标签解析�
 - <dubbo:protocol >会被解析成ProtocolConfig实体类。
 - <dubbo:service >会被解析成ServiceBean实体类。
 
-其中ServiceBean.afterPropertiesSet()方法实现服务提供者的逻辑
 
 ## consumer
 ### 生成Bean对象

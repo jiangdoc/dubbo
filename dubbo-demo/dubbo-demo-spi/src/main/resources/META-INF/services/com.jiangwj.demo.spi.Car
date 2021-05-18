@@ -1,4 +1,4 @@
 red=com.jiangwj.demo.spi.RedCar
 white=com.jiangwj.demo.spi.WhiteCar
 # AOP
-com.jiangwj.demo.aop.CarWrapper
+wrapper=com.jiangwj.demo.aop.CarWrapper

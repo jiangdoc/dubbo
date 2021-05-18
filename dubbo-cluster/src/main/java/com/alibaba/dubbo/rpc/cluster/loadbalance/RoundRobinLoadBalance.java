@@ -39,27 +39,43 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
     private final ConcurrentMap<String, AtomicPositiveInteger> sequences = new ConcurrentHashMap<String, AtomicPositiveInteger>();
 
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
+        // key = 全限定类名 + "." + 方法名，比如 com.xxx.DemoService.sayHello
         String key = invokers.get(0).getUrl().getServiceKey() + "." + invocation.getMethodName();
         int length = invokers.size(); // Number of invokers
+        // 最大权重
         int maxWeight = 0; // The maximum weight
+        // 最小权重
         int minWeight = Integer.MAX_VALUE; // The minimum weight
         final LinkedHashMap<Invoker<T>, IntegerWrapper> invokerToWeightMap = new LinkedHashMap<Invoker<T>, IntegerWrapper>();
+        // 权重总和
         int weightSum = 0;
+
+        // 下面这个循环主要用于查找最大和最小权重，计算权重总和等
         for (int i = 0; i < length; i++) {
             int weight = getWeight(invokers.get(i), invocation);
+            // 获取最大和最小权重
             maxWeight = Math.max(maxWeight, weight); // Choose the maximum weight
             minWeight = Math.min(minWeight, weight); // Choose the minimum weight
             if (weight > 0) {
+                // 将 weight 封装到 IntegerWrapper 中
                 invokerToWeightMap.put(invokers.get(i), new IntegerWrapper(weight));
+                // 累加权重
                 weightSum += weight;
             }
         }
+
+        // 查找 key 对应的对应 AtomicPositiveInteger 实例，为空则创建。
+        // 这里可以把 AtomicPositiveInteger 看成一个黑盒，大家只要知道
+        // AtomicPositiveInteger 用于记录服务的调用编号即可。至于细节，
+        // 大家如果感兴趣，可以自行分析
         AtomicPositiveInteger sequence = sequences.get(key);
         if (sequence == null) {
             sequences.putIfAbsent(key, new AtomicPositiveInteger());
             sequence = sequences.get(key);
         }
+        // 获取当前的调用编号
         int currentSequence = sequence.getAndIncrement();
+        // 如果最小权重小于最大权重，表明服务提供者之间的权重是不相等的
         if (maxWeight > 0 && minWeight < maxWeight) {
             int mod = currentSequence % weightSum;
             for (int i = 0; i < maxWeight; i++) {

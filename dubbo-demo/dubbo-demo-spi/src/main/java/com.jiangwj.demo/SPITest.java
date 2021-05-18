@@ -26,11 +26,18 @@ public class SPITest {
         final Car red = extensionLoader.getExtension("red");
         red.sayColor();*/
 
-        ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);
+        /*ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);
         final Driver defaultExtension = extensionLoader.getDefaultExtension();
         Map<String,String> map = new HashMap<String, String>();
         map.put("type","red");
         URL url = new URL("","",0,map);
-        defaultExtension.driverCar(url);
+        defaultExtension.driverCar(url);*/
+
+        ExtensionLoader<Car> extensionLoader = ExtensionLoader.getExtensionLoader(Car.class);
+        final Car defaultExtension = extensionLoader.getAdaptiveExtension();
+        Map<String,String> map = new HashMap<String, String>();
+        map.put("car","white");
+        URL url = new URL("","",0,map);
+        defaultExtension.sayColor(url);
     }
 }
