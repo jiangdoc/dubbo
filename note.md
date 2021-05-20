@@ -76,11 +76,11 @@ public class proxy0 implements ClassGenerator.DC, EchoService, DemoService {
 3. 执行invoker的invoke()，invoker对象是一个MockClusterInvoker类型
     1. 调用MockClusterInvoker.invoke方法
     2. 真实调用的是AbstractClusterInvoker.invoke方法
-        1. 获取服务提供者集合
-        2. 通过负载均衡策略LoadBalance来选择一个Invoker,默认是随机(Dubbo 提供了4种负载均衡实现:权重随机算法的 RandomLoadBalance、最少活跃调用数算法的 LeastActiveLoadBalance、基于hash一致性的 ConsistentHashLoadBalance，基于加权轮询算法的 RoundRobinLoadBalance)
-        3. 具体调用实现是由子类实现的（但是在调动之前会通过ExchangeCodec编码）
-    3. AbstractClusterInvoker有好几个实现类，对应的就是dubbo的六个集群容错方式，
-    默认是Failover（也就是失败自动切换，当出现失败，重试其它服务器。通常用于读操作，但重试会带来更长延迟。可以通过retries="2"设置重试次数）
+        1. 获取服务提供者集合：调用directory.list()方法获取Invoker列表(可将Invoker简单理解为服务提供者)，Directory的用途就是保存Invoker，他的实现类RegisterDirectory会维护一个服务目录，当服务目录变化的时候，会notify()通知目录动态改变。
+        2. 根据配置的负载均衡策略生成LoadBalance对象,默认是加权随机(Dubbo 提供了4种负载均衡实现:权重随机算法的 RandomLoadBalance、最少活跃调用数算法的 LeastActiveLoadBalance、基于hash一致性的 ConsistentHashLoadBalance，基于加权轮询算法的 RoundRobinLoadBalance)
+        3. 具体选择服务和调用服务是由AbstractClusterInvoker子类实现的
+         AbstractClusterInvoker有好几个实现类，对应的就是dubbo的六个集群容错方式，
+            默认是Failover（也就是失败自动切换，当出现失败，重试其它服务器。通常用于读操作，但重试会带来更长延迟。可以通过retries="2"设置重试次数）
 
 整个调用链如下：
 ```html
@@ -214,3 +214,29 @@ Dubbo 提供了4种负载均衡实现:
 >经过加权，每台服务器能够得到的请求数比例，接近或等于他们的权重比。
 比如服务器 A、B、C 权重比为 5:2:1。那么在8次请求中，服务器 A 将收到其中的5次请求，服务器 B 会收到其中的2次请求，服务器 C 则收到其中的1次请求。
 [官方负载均衡实现](https://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/)
+
+## 集群
+集群工作过程可分为两个阶段，第一个阶段是在服务消费者初始化期间，集群 Cluster 实现类为服务消费者创建 Cluster Invoker 实例，也就是Invoker的合并操作。
+第二个阶段是在服务消费者进行远程调用时。以 FailoverClusterInvoker 为例，该类型 Cluster Invoker 首先会调用 Directory 的 list 方法列举 Invoker 列表（可将 Invoker 简单理解为服务提供者）。
+Directory 的用途是保存 Invoker，可简单类比为 List<Invoker>。其实现类 RegistryDirectory 是一个动态服务目录，可感知注册中心配置的变化，它所持有的 Invoker 列表会随着注册中心内容的变化而变化。
+每次变化后，RegistryDirectory 会动态增删 Invoker，并调用 Router 的 route 方法进行路由，过滤掉不符合路由规则的 Invoker。
+当 FailoverClusterInvoker 拿到 Directory 返回的 Invoker 列表后，它会通过 LoadBalance 从 Invoker 列表中选择一个 Invoker。
+最后 FailoverClusterInvoker 会将参数传给 LoadBalance 选择出的 Invoker 实例的 invoke 方法，进行真正的远程调用。
+
+### Cluster 和 AbstractClusterInvoker区别？
+Cluster接口只有一个方法，就是join()方法，这个方法就是将多个Directory合并为一个AbstractClusterInvoker，其实就是根据集群容错创建Invoker实例。
+AbstractClusterInvoker 封装了服务提供者选择逻辑，以及远程调用失败后的处理逻辑。
+
+### 集群容错
+AbstractClusterInvoker实现了一些公共的逻辑，比如调用list()从RegistryDirectory中获取到获取Invoker列表，选择一个负载均衡器（LoadBalance），还有select()也就是负载均衡方法等等。
+AbstractClusterInvoker还有一个doInvoke()的模板方法，具体实现调用逻辑和容错逻辑子类实现。
+- FailoverClusterInvoker：失败切换，调用失败会切换Invoker重试。
+- FailbackClusterInvoker：失败恢复，会在调用失败后，返回一个空结果给服务消费者。并通过定时任务对失败的调用进行重试，适合执行消息通知等操作。
+- FailfastClusterInvoker：快速失败，只会进行一次调用，失败后立即抛出异常。适用于幂等操作，比如新增记录。
+- FailsafeClusterInvoker：失败安全，当调用过程中出现异常时，FailsafeClusterInvoker 仅会打印异常，而不会抛出异常。适用于写入审计日志等操作。
+- ForkingClusterInvoker：并行调用多个服务提供者，会在运行时通过线程池创建多个线程，并发调用多个服务提供者。只要有一个服务提供者成功返回了结果，doInvoke 方法就会立即结束运行。ForkingClusterInvoker 的应用场景是在一些对实时性要求比较高读操作
+- BroadcastClusterInvoker：会逐个调用每个服务提供者，如果其中一台报错，在循环调用结束后，BroadcastClusterInvoker 会抛出异常。该类通常用于通知所有提供者更新缓存或日志等本地资源信息。
+
+
+
+

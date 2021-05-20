@@ -36,7 +36,9 @@ public interface Invoker<T> extends Node {
 
     /**
      * invoke.
-     *
+     * 1. 从directory中获取服务提供者列表List<Invoker<T>>
+     * 2. 选择一个负载均衡策略，默认是加权随机RandomLoadBalance
+     * 3. 由集群容错的子类去实现真正的调用逻辑，以及失败之后的容错逻辑（注意这里还会根据负载均衡策略，调用select选出一个invoker）
      * @param invocation
      * @return result
      * @throws RpcException

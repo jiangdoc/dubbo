@@ -28,6 +28,9 @@ import com.alibaba.dubbo.rpc.cluster.support.FailoverCluster;
  * <a href="http://en.wikipedia.org/wiki/Computer_cluster">Cluster</a>
  * <a href="http://en.wikipedia.org/wiki/Fault-tolerant_system">Fault-Tolerant</a>
  *
+ * Cluster的主要作用是生成AbstractClusterInvoker
+ * AbstractClusterInvoker封装了服务提供者选择逻辑，以及远程调用失败后的处理逻辑。
+ *
  */
 @SPI(FailoverCluster.NAME)
 public interface Cluster {

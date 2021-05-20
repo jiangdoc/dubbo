@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * AbstractClusterInvoker
+ * AbstractClusterInvoker封装了服务提供者选择逻辑，以及远程调用失败后的处理逻辑。
  *
  */
 public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
@@ -103,14 +104,23 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
             return null;
         String methodName = invocation == null ? "" : invocation.getMethodName();
 
+        // 获取 sticky 配置，sticky 表示粘滞连接。所谓粘滞连接是指让服务消费者尽可能的
+        // 调用同一个服务提供者，除非该提供者挂了再进行切换
         boolean sticky = invokers.get(0).getUrl().getMethodParameter(methodName, Constants.CLUSTER_STICKY_KEY, Constants.DEFAULT_CLUSTER_STICKY);
         {
             //ignore overloaded method
+            // 检测 invokers 列表是否包含 stickyInvoker，如果不包含，
+            // 说明 stickyInvoker 代表的服务提供者挂了，此时需要将其置空
             if (stickyInvoker != null && !invokers.contains(stickyInvoker)) {
                 stickyInvoker = null;
             }
             //ignore cucurrent problem
+            // 在 sticky 为 true，且 stickyInvoker != null 的情况下。如果 selected 包含
+            // stickyInvoker，表明 stickyInvoker 对应的服务提供者可能因网络原因未能成功提供服务。
+            // 但是该提供者并没挂，此时 invokers 列表中仍存在该服务提供者对应的 Invoker。
             if (sticky && stickyInvoker != null && (selected == null || !selected.contains(stickyInvoker))) {
+                // availablecheck 表示是否开启了可用性检查，如果开启了，则调用 stickyInvoker 的
+                // isAvailable 方法进行检查，如果检查通过，则直接返回 stickyInvoker。
                 if (availablecheck && stickyInvoker.isAvailable()) {
                     return stickyInvoker;
                 }
@@ -138,6 +148,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
+        // 如果 selected 包含负载均衡选择出的 Invoker，或者该 Invoker 无法经过可用性检查，此时进行重选
         if ((selected != null && selected.contains(invoker))
                 || (!invoker.isAvailable() && getUrl() != null && availablecheck)) {
             try {
@@ -217,15 +228,23 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         return null;
     }
 
+    /**
+     * 1. 从directory中获取服务提供者列表List<Invoker<T>>
+     * 2. 选择一个负载均衡策略，默认是加权随机RandomLoadBalance
+     * 3. 由集群容错的子类去实现真正的调用逻辑，以及失败之后的容错逻辑（注意这里还会根据负载均衡策略，调用select选出一个invoker）
+     * @param invocation
+     * @return
+     * @throws RpcException
+     */
     public Result invoke(final Invocation invocation) throws RpcException {
 
         checkWhetherDestroyed();
 
         LoadBalance loadbalance;
 
-        // 1.获取服务提供者集合
+        // 1.获取服务提供者集合:从RegistryDirectory中获取到的，服务订阅的时候会通知RegistryDirectory
         List<Invoker<T>> invokers = list(invocation);
-        // 2.选择一个负载均衡策略,默认是随机
+        // 2.选择一个负载均衡策略,默认是加权随机
         if (invokers != null && invokers.size() > 0) {
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(invocation.getMethodName(), Constants.LOADBALANCE_KEY, Constants.DEFAULT_LOADBALANCE));
@@ -263,11 +282,13 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         }
     }
 
-    protected abstract Result doInvoke(Invocation invocation, List<Invoker<T>> invokers,
-                                       LoadBalance loadbalance) throws RpcException;
 
     protected List<Invoker<T>> list(Invocation invocation) throws RpcException {
+        // 调用 Directory 的 list 方法列举 Invoker
         List<Invoker<T>> invokers = directory.list(invocation);
         return invokers;
     }
+
+
+    protected abstract Result doInvoke(Invocation invocation, List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException;
 }

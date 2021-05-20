@@ -33,7 +33,7 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
      * package org.apache.dubbo.common.bytecode;
      * public class proxy0 implements ClassGenerator.DC, EchoService, DemoService {
      *     // 方法数组
-             *     public static Method[] methods;
+     *     public static Method[] methods;
      *     private InvocationHandler handler;
      *     public proxy0(InvocationHandler invocationHandler) {
      *         this.handler = invocationHandler;

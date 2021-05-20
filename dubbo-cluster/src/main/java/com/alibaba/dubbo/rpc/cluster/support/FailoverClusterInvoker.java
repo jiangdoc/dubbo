@@ -39,6 +39,13 @@ import java.util.Set;
  * Note that retry causes latency.
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Failover">Failover</a>
+ * 失败切换：失败后会进行默认3次重试，
+ * 1. 先根据配置获取配置的重试次数，默认是3次。
+ * 2. 循环调用，如果不是第一次调用会调用list()重选列举服务目录。
+ * 3. 负载均衡选择Invoker，并且把选中后的Invoker记录下来，当失败重试的时候如果再次选到，会重新选择一次。
+ * 4. 调用Invoker的invoker()，成功则返回结果。
+ * 5. 如果调用失败会记录异常信息，然后重试。
+ * 6. 直到超出重试次数后，会抛出异常，告诉服务调用失败了。
  *
  */
 public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
@@ -53,6 +60,8 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
     public Result doInvoke(Invocation invocation, final List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         List<Invoker<T>> copyinvokers = invokers;
         checkInvokers(copyinvokers, invocation);
+
+        // 获取重试次数
         int len = getUrl().getMethodParameter(invocation.getMethodName(), Constants.RETRIES_KEY, Constants.DEFAULT_RETRIES) + 1;
         if (len <= 0) {
             len = 1;
@@ -61,17 +70,21 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
         RpcException le = null; // last exception.
         List<Invoker<T>> invoked = new ArrayList<Invoker<T>>(copyinvokers.size()); // invoked invokers.
         Set<String> providers = new HashSet<String>(len);
+        // 循环调用，失败重试
         for (int i = 0; i < len; i++) {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
             if (i > 0) {
                 checkWhetherDestroyed();
+                // 在进行重试前重新列举 Invoker，这样做的好处是，如果某个服务挂了，
+                // 通过调用 list 可得到最新可用的 Invoker 列表
                 copyinvokers = list(invocation);
                 // check again
                 checkInvokers(copyinvokers, invocation);
             }
-            // 负载均衡策略
+            // 通过负载均衡选择 Invoker
             Invoker<T> invoker = select(loadbalance, invocation, copyinvokers, invoked);
+            // 选择后的记录下来，失败重试如果选到的在这里面会进行重选
             invoked.add(invoker);
             RpcContext.getContext().setInvokers((List) invoked);
             try {
@@ -100,6 +113,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 providers.add(invoker.getUrl().getAddress());
             }
         }
+        // 若重试失败，则抛出异常
         throw new RpcException(le != null ? le.getCode() : 0, "Failed to invoke the method "
                 + invocation.getMethodName() + " in the service " + getInterface().getName()
                 + ". Tried " + len + " times of the providers " + providers

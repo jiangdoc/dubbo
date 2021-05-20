@@ -40,6 +40,13 @@ import java.util.concurrent.TimeUnit;
 /**
  * When fails, record failure requests and schedule for retry on a regular interval.
  * Especially useful for services of notification.
+ *  失败自动恢复：会在调用失败后，返回一个空结果给服务消费者。并通过定时任务对失败的调用进行重传，适合执行消息通知等操作。
+ *  1. FailbackClusterInvoker对象有两个属性：一个是核心线程数是2的定时线程池，用于定时执行失败的调用：Executors.newScheduledThreadPool(2,....)，一个是ConcurrentMap类型的failed，用于存储失败的调用信息。
+ *  2. 当有rpc调用采用的集群容错方式是failback试，就会执行FailbackClusterInvoker的doInvoke()方法。
+ *  3. doInvoke()方法首先会根据负载均衡选择一个Invoker调用它的invoker()。
+ *  4. 当时失败的时候，会打印一个error日志，但是不会抛出异常。
+ *  5. 打印日志后会把请求信息put到failed中，并且同步启动定时线程池去重试failed中的失败请求。
+ *  6. 把调用成功的请求从failed中移除。
  *
  * <a href="http://en.wikipedia.org/wiki/Failback">Failback</a>
  *
@@ -67,6 +74,7 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
                         public void run() {
                             // collect retry statistics
                             try {
+                                // 五秒重试
                                 retryFailed();
                             } catch (Throwable t) { // Defensive fault tolerance
                                 logger.error("Unexpected error occur at collect statistic", t);
@@ -83,8 +91,8 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
         if (failed.size() == 0) {
             return;
         }
-        for (Map.Entry<Invocation, AbstractClusterInvoker<?>> entry : new HashMap<Invocation, AbstractClusterInvoker<?>>(
-                failed).entrySet()) {
+        // 重试失败列表
+        for (Map.Entry<Invocation, AbstractClusterInvoker<?>> entry : new HashMap<Invocation, AbstractClusterInvoker<?>>(failed).entrySet()) {
             Invocation invocation = entry.getKey();
             Invoker<?> invoker = entry.getValue();
             try {
@@ -99,12 +107,17 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
     protected Result doInvoke(Invocation invocation, List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         try {
             checkInvokers(invokers, invocation);
+            // 负载均衡算法，选择Invoker
             Invoker<T> invoker = select(loadbalance, invocation, invokers, null);
+            // 调用
             return invoker.invoke(invocation);
         } catch (Throwable e) {
+            // 如果调用过程中发生异常，此时仅打印错误日志，不抛出异常
             logger.error("Failback to invoke method " + invocation.getMethodName() + ", wait for retry in background. Ignored exception: "
                     + e.getMessage() + ", ", e);
+            // 添加到失败列表中，定时重试
             addFailed(invocation, this);
+            // 返回空结果
             return new RpcResult(); // ignore
         }
     }
