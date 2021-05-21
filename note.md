@@ -237,6 +237,11 @@ AbstractClusterInvoker还有一个doInvoke()的模板方法，具体实现调用
 - ForkingClusterInvoker：并行调用多个服务提供者，会在运行时通过线程池创建多个线程，并发调用多个服务提供者。只要有一个服务提供者成功返回了结果，doInvoke 方法就会立即结束运行。ForkingClusterInvoker 的应用场景是在一些对实时性要求比较高读操作
 - BroadcastClusterInvoker：会逐个调用每个服务提供者，如果其中一台报错，在循环调用结束后，BroadcastClusterInvoker 会抛出异常。该类通常用于通知所有提供者更新缓存或日志等本地资源信息。
 
+## 领域模型
+在 Dubbo 的核心领域模型中：
+Protocol 是服务域，它是 Invoker 暴露和引用的主功能入口，它负责 Invoker 的生命周期管理。
+Invoker 是实体域，它是 Dubbo 的核心模型，其它模型都向它靠扰，或转换成它，它代表一个可执行体，可向它发起 invoke 调用，它有可能是一个本地的实现，也可能是一个远程的实现，也可能一个集群实现。
+Invocation 是会话域，它持有调用过程中的变量，比如方法名，参数等。
 
 
 
