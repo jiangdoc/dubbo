@@ -68,12 +68,15 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
             }
         }
         RpcContext.getContext().setInvokers((List) selected);
+        // 记录失败次数
         final AtomicInteger count = new AtomicInteger();
+        // 记录成功或者异常信息
         final BlockingQueue<Object> ref = new LinkedBlockingQueue<Object>();
         for (final Invoker<T> invoker : selected) {
             executor.execute(new Runnable() {
                 public void run() {
                     try {
+                        // 执行
                         Result result = invoker.invoke(invocation);
                         ref.offer(result);
                     } catch (Throwable e) {
@@ -86,6 +89,7 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
             });
         }
         try {
+            // 阻塞获取结果，如果是异常类型，就抛出异常
             Object ret = ref.poll(timeout, TimeUnit.MILLISECONDS);
             if (ret instanceof Throwable) {
                 Throwable e = (Throwable) ret;

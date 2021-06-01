@@ -33,6 +33,9 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport {
         Version.checkDuplicate(DubboNamespaceHandler.class);
     }
 
+    /**
+     * 根据命名空间解析标签，这也就是服务提供者的Beandefinition的beanClass属性都是ReferenceBean，服务提供者的Beandefinition的beanClass属性都是ServiceBean
+     */
     public void init() {
         registerBeanDefinitionParser("application", new DubboBeanDefinitionParser(ApplicationConfig.class, true));
         registerBeanDefinitionParser("module", new DubboBeanDefinitionParser(ModuleConfig.class, true));

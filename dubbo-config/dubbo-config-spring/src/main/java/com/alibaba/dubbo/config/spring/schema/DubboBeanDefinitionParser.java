@@ -400,6 +400,12 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         }
     }
 
+    /**
+     * @see org.springframework.beans.factory.xml.NamespaceHandlerSupport#parse(org.w3c.dom.Element, org.springframework.beans.factory.xml.ParserContext)
+     * @param element
+     * @param parserContext
+     * @return
+     */
     public BeanDefinition parse(Element element, ParserContext parserContext) {
         return parse(element, parserContext, beanClass, required);
     }
