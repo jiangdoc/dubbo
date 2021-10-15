@@ -8,7 +8,7 @@ import com.alibaba.dubbo.common.URL;
  */
 public class RedCar implements Car {
     @Override
-    public void sayColor(URL url) {
+    public void sayColor() {
         System.out.println("color is red");
     }
 }

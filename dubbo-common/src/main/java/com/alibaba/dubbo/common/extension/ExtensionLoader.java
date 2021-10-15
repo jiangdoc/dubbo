@@ -98,7 +98,12 @@ public class ExtensionLoader<T> {
         /**
          * ExtensionFactory表示扩展机制的工厂，在Dubbo里面有SPI扩展机制，也有Spring扩展机制
          */
-        objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
+        //objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
+        if (type == ExtensionFactory.class){
+            objectFactory = null;
+        }else{
+            objectFactory = ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension();
+        }
     }
 
     private static <T> boolean withExtensionAnnotation(Class<T> type) {
@@ -767,7 +772,9 @@ public class ExtensionLoader<T> {
     private T createAdaptiveExtension() {
         try {
             // 获取自适应Bean，并通过反射实例化
-            return injectExtension((T) getAdaptiveExtensionClass().newInstance());
+            Object instance = getAdaptiveExtensionClass().newInstance();
+            System.out.println(instance.getClass().getName());
+            return injectExtension((T) instance);
         } catch (Exception e) {
             throw new IllegalStateException("Can not create adaptive extension " + type + ", cause: " + e.getMessage(), e);
         }

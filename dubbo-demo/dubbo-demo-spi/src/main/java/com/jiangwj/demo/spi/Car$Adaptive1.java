@@ -5,6 +5,7 @@ import com.alibaba.dubbo.common.extension.ExtensionLoader;
 /**
  * Car$Adaptive
  */
+/*
 public class Car$Adaptive1 implements com.jiangwj.demo.spi.Car {
     public void sayColor(com.alibaba.dubbo.common.URL arg0) {
         if (arg0 == null) throw new IllegalArgumentException("url == null");
@@ -15,4 +16,4 @@ public class Car$Adaptive1 implements com.jiangwj.demo.spi.Car {
         com.jiangwj.demo.spi.Car extension = (com.jiangwj.demo.spi.Car) ExtensionLoader.getExtensionLoader(com.jiangwj.demo.spi.Car.class).getExtension(extName);
         extension.sayColor(arg0);
     }
-}
+}*/

@@ -84,6 +84,11 @@ public final class URL implements Serializable {
 
     private final String path;
 
+    /**
+     * @Activate需要的 group字段
+     * 还可能包含的参数
+     * @see Constants
+     */
     private final Map<String, String> parameters;
 
     // ==== cache ====

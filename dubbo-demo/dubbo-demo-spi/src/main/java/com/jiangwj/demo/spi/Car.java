@@ -9,10 +9,10 @@ import com.alibaba.dubbo.common.extension.SPI;
  * @date 2021/5/14
  */
 // spi注解中的value值就是配置文件中对应的默认的extension
-//@SPI("red")
-@SPI
+@SPI("red")
+//@SPI
 public interface Car {
     //@Adaptive("type")
     @Adaptive
-    void sayColor(URL url);
+    void sayColor();
 }

@@ -15,29 +15,29 @@ import java.util.Map;
 public class SPITest {
     public static void main(String[] args) {
 
-        /*ExtensionLoader<Car> extensionLoader = ExtensionLoader.getExtensionLoader(Car.class);
+        ExtensionLoader<Car> extensionLoader = ExtensionLoader.getExtensionLoader(Car.class);
 
         //@SPI("red")
         //spi注解中的value值就是配置文件中对应的默认的extension
-        *//*final Car defaultExtension = extensionLoader.getDefaultExtension();
-        defaultExtension.sayColor();*//*
+        final Car defaultExtension = extensionLoader.getDefaultExtension();
+        defaultExtension.sayColor();
 
         // AOP
-        final Car red = extensionLoader.getExtension("red");
-        red.sayColor();*/
+        final Car red = extensionLoader.getExtension("white");
+        red.sayColor();
 
-        /*ExtensionLoader<Driver> extensionLoader = ExtensionLoader.getExtensionLoader(Driver.class);
-        final Driver defaultExtension = extensionLoader.getDefaultExtension();
+        ExtensionLoader<Driver> extensionLoader2 = ExtensionLoader.getExtensionLoader(Driver.class);
+        final Driver defaultExtension2 = extensionLoader2.getDefaultExtension();
         Map<String,String> map = new HashMap<String, String>();
         map.put("type","red");
         URL url = new URL("","",0,map);
-        defaultExtension.driverCar(url);*/
+        defaultExtension2.driverCar(url);
 
-        ExtensionLoader<Car> extensionLoader = ExtensionLoader.getExtensionLoader(Car.class);
+        /*ExtensionLoader<Car> extensionLoader = ExtensionLoader.getExtensionLoader(Car.class);
         final Car defaultExtension = extensionLoader.getAdaptiveExtension();
         Map<String,String> map = new HashMap<String, String>();
         map.put("car","white");
         URL url = new URL("","",0,map);
-        defaultExtension.sayColor(url);
+        defaultExtension.sayColor(url);*/
     }
 }

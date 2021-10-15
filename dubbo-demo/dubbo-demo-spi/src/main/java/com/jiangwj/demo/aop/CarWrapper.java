@@ -8,14 +8,14 @@ import com.jiangwj.demo.spi.Car;
  * @author jiangwenjie
  * @date 2021/5/14
  */
-public class CarWrapper implements Car {
+/*public class CarWrapper implements Car {
 
     private Car car;
 
-    /**
+    *//**
      * 会使用构造方法去注入
      * @param car
-     */
+     *//*
     public CarWrapper(Car car){
         this.car = car;
     }
@@ -28,4 +28,4 @@ public class CarWrapper implements Car {
         car.sayColor(url);
         System.out.println("wrapper after ...");
     }
-}
+}*/
